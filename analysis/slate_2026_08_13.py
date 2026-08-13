@@ -202,9 +202,13 @@ def readiness_for(game: BoardGame) -> DataReadiness:
         # 正式打線 16:20 JST 仍未公布 (18:00 開賽)；使用者先前指示略過。
         lineups_confirmed=False,
         waived=frozenset({"lineups_confirmed"}),
-        # 賠率無法覆核: 單一時點的單一平台截圖，且六場的讓分 0.950 與
-        # 大小 0.930 完全一致，不像實際會隨盤move的報價。
-        prices_verified=False,
+        # 賠率已由使用者 2026-08-13 提供看板截圖目視確認。
+        #
+        # 先前把「六場讓分皆 0.950、大小皆 0.930」當成報價可疑的理由是
+        # **錯的**: 這個平台是固定賠率、浮動盤口 —— 價格是靠 N±XX 那個
+        # 結算百分比在調，不是靠改賠率。齊一的賠率正是這套連續內插盤的
+        # 設計本身，不是placeholder。
+        prices_verified=True,
         # 以下這次真的取得了。
         bullpen_usage_known=True,
         team_rates_known=True,
@@ -257,8 +261,9 @@ def build_report() -> DailyReport:
                 f"球場係數 {cal.PARK_FACTORS_2026[park]:.3f}（2026 實測）。"
                 + WEATHER.get(park, "巨蛋／開閉式屋頂，天氣不影響")
             ),
-            market_note="單一時點單一平台截圖；六場讓分皆 0.950、大小皆 0.930，"
-                        "無開盤價與跨莊家比對，無法覆核",
+            market_note="賠率已由使用者看板截圖確認。此平台固定賠率"
+                        "（讓分 0.950／大小 0.930）、以 N±XX 結算百分比調價；"
+                        "仍無開盤價與跨莊家比對",
             rationale=(
                 f"模型預期總分 {dists.expected_total():.2f}"
                 f"（{home} {dists.lam_home:.2f} - {away} {dists.lam_away:.2f}）；"
@@ -295,9 +300,10 @@ def build_report() -> DailyReport:
             "屬結構性偏誤。",
             "**大小分可定價**：同一份回測中總分累積分布在每個關鍵整數誤差 < 1pp"
             "（P(>7) 模型 40.36% vs 實際 40.45%）。",
-            "**賠率無法覆核**：六場讓分皆 0.950、大小皆 0.930，數值完全一致，"
-            "且無開盤價與跨莊家比對。EV 是賠率的函數，賠率不可信則 EV 不可用，"
-            "因此本日所有選項最多只到「觀察」。",
+            "**賠率已覆核**：使用者提供看板截圖，六場讓分／大小／上半盤與"
+            "本檔記錄逐一相符。此平台為 **固定賠率、浮動盤口** —— 讓分一律 "
+            "0.950、大小一律 0.930，價格是靠 N±XX 的結算百分比在調。"
+            "因此賠率齊一是設計使然，不是報價可疑。",
             "天氣來源 (api.open-meteo.com、weather.yahoo.co.jp) 仍被出口政策擋下，"
             "露天兩場只有日級降水機率（仙台 80%、東京 60%），無逐時風向與溫度。",
         ],
