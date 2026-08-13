@@ -26,10 +26,11 @@
 
 | 模組 | 職責 |
 |---|---|
-| `bethero.lines` | 亞洲盤盤口解析 (`8平` / `7+25` / `7-25`) 與結算規則 |
+| `bethero.lines` | 亞洲盤盤口解析 (`N平` / `N±XX`) 與結算規則 |
 | `bethero.board` | 看板辨識結果的資料結構，每欄帶信心度 |
 | `bethero.model` | NPB 專屬得分分布模型 |
 | `bethero.ev` | 去水 (比例法／次方法)、期望值、一般化 Kelly |
+| `bethero.breakeven` | 所需勝率／損益兩平門檻 (不需外部資料) |
 | `bethero.gates` | 推薦門檻 |
 | `bethero.bankroll` | 本金、單注上限、單日曝險上限 |
 | `bethero.report` | 繁體中文報告輸出 |
