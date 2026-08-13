@@ -73,6 +73,32 @@ class TestParsing:
         assert settle_handicap(line, 2) == 1
         assert settle_handicap(line, 0) == -1
 
+    def test_attested_decimal_is_taken_literally(self):
+        """使用者目視確認後，6.5 就是 6.5 —— 等效半球盤，永不走盤。"""
+        line = parse_board_line("6.5", attested=True)
+        assert line.confidence is Confidence.CONFIRMED
+        assert line.effective == Fraction(13, 2)
+        assert line.base == 6 and line.edge == Fraction(-1)
+        assert settle_total(line, 6, "over") == -1
+        assert settle_total(line, 7, "over") == 1
+        for total in range(0, 16):
+            assert settle_total(line, total, "over") != 0
+
+    @pytest.mark.parametrize(
+        "effective,base,edge",
+        [
+            (Fraction(13, 2), 6, Fraction(-1)),    # 6.5  半球盤
+            (Fraction(27, 4), 7, Fraction(1, 2)),  # 6.75
+            (Fraction(25, 4), 6, Fraction(-1, 2)), # 6.25
+            (Fraction(7), 7, Fraction(0)),         # 整數盤
+            (Fraction(13, 10), 1, Fraction(-3, 5)),# 1.30 -> 1-60
+        ],
+    )
+    def test_from_effective_roundtrip(self, effective, base, edge):
+        line = Line.from_effective(effective)
+        assert (line.base, line.edge) == (base, edge)
+        assert line.effective == effective
+
     def test_decimal_form_is_flagged_for_confirmation(self):
         """純小數不是看板慣用寫法 —— 6.5 可能是 6-50 或 6+50，差 0.5 分。"""
         line = L("6.5")

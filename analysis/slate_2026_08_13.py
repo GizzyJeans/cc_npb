@@ -138,11 +138,9 @@ GAMES = [
         f5_handicap_raw="0",
         f5_total_raw="3-25",
         # 1+95: 阪神贏 1 分收 95% 賠金 -> 等效讓 0.525
-        unresolved=[
-            "全場大小「6.5」非看板慣用的 N平/N±XX 寫法。與其餘五場的"
-            "上半/全場總分比 (0.526-0.557) 對照，最相容的是 6+50 (等效 5.75，"
-            "比值 0.543)；literal 6.5 的比值 0.481 是離群值。需目視確認。"
-        ],
+        # 全場大小 6.5: 使用者 2026-08-13 目視確認為字面值 (非 6+50)。
+        # 等效半球盤，總分 6 小分全贏、7 大分全贏，永不走盤。
+        attested_fields=frozenset({"total"}),
     ),
 ]
 
@@ -159,6 +157,8 @@ def _readiness(weather_known: bool, line_type_confirmed: bool = True) -> DataRea
         line_type_confirmed=line_type_confirmed,
         # 以下全部取不到 —— 出口政策擋掉了所有 NPB 統計站。
         lineups_confirmed=False,
+        # 使用者 2026-08-13 指示「略過打線」—— 放棄此門檻但留下紀錄。
+        waived=frozenset({"lineups_confirmed"}),
         bullpen_usage_known=False,
         team_rates_known=False,
         park_factor_known=False,
@@ -190,7 +190,7 @@ def build_report() -> DailyReport:
                 graded=graded,
                 pitching_note=f"{game.away_starter} vs {game.home_starter}"
                 "（預告先發已確認；兩人當季成績與休息天數未能取得）",
-                lineup_note="正式先發打線尚未公布（開賽前約 1 小時）",
+                lineup_note="依使用者指示略過（正式打線尚未公布）",
                 bullpen_note="近三日牛棚使用量無法取得",
                 park_weather_note=(
                     "巨蛋／開閉式屋頂，天氣不影響"
@@ -198,7 +198,7 @@ def build_report() -> DailyReport:
                     else "露天球場，今日東北～關東有大雨預報，有延賽風險"
                 ),
                 market_note="僅有單一時點的單一平台報價，無開盤價與跨莊家比較",
-                rationale="盤型已確認，但球隊/投手數據與正式打線皆缺 —— 不下注",
+                    rationale="盤型全數確認；卡在球隊得分率與投手數據取不到 —— 不下注",
                 risks=["模型參數未經 2026 當季資料校準"],
                 cancel_conditions=["若正式打線公布後主力輪休，須整場重算"],
             )

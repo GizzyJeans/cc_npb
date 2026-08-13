@@ -56,13 +56,16 @@ class BoardGame:
     unresolved: list[str] = field(default_factory=list)
     """辨識不確定、需要人工確認的欄位說明。"""
 
+    attested_fields: frozenset[str] = frozenset()
+    """使用者目視確認過的欄位名 (如 ``"total"``)，非慣用寫法也採用字面值。"""
+
     @property
     def handicap(self) -> Line:
         return parse_board_line(self.handicap_raw)
 
     @property
     def total(self) -> Line:
-        return parse_board_line(self.total_raw)
+        return parse_board_line(self.total_raw, "total" in self.attested_fields)
 
     @property
     def f5_total(self) -> Line:

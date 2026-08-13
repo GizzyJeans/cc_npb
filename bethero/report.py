@@ -109,6 +109,9 @@ class DailyReport:
             audit = a.game.audit()
             if audit:
                 lines.append("- **盤口待確認**：" + "；".join(audit))
+            waived = a.readiness.waived_reasons()
+            if waived:
+                lines.append("- **已放棄的門檻**：" + "；".join(waived))
             gaps = a.readiness.blocking_reasons() + a.readiness.soft_gaps()
             if gaps:
                 lines.append("- **資料缺口**：" + "；".join(gaps))

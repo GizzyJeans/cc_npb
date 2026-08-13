@@ -79,6 +79,21 @@ class Line:
     def is_usable(self) -> bool:
         return self.confidence is Confidence.CONFIRMED
 
+    @classmethod
+    def from_effective(cls, value: Fraction | float, raw: str = "", note: str = "") -> "Line":
+        """由等效盤口反推 ``(base, edge)``。
+
+        等效 = base - edge/2，所以 base = round(等效)、edge = 2*(base - 等效)。
+        半球盤 (.5) 得到 edge = ∓1 —— 落在整數時全贏或全輸，不走盤，
+        這正是半球盤的定義。
+        """
+        v = Fraction(value).limit_denominator(100)
+        base = int(v + Fraction(1, 2)) if v % 1 != Fraction(1, 2) else int(v)
+        edge = 2 * (Fraction(base) - v)
+        if not -1 <= edge <= 1:
+            raise ValueError(f"等效盤口 {float(v):g} 無法表示為 base±edge")
+        return cls(base, edge, raw or f"{float(v):g}", Confidence.CONFIRMED, note)
+
     def settle(self, outcome: int) -> Fraction:
         """主方每 1 單位本金的結算比例。
 
@@ -117,12 +132,14 @@ _BOARD_RE = re.compile(
 )
 
 
-def parse_board_line(raw: str) -> Line:
+def parse_board_line(raw: str, attested: bool = False) -> Line:
     """解析看板盤口字串。
 
     ``N平`` / ``N`` -> 走盤盤；``N-XX`` / ``N+XX`` -> 帶結算比例的盤。
-    純小數 (如 ``6.5``) 不是這張看板的慣用寫法，會標為待確認 ——
+
+    純小數 (如 ``6.5``) 不是這張看板的慣用寫法，預設標為待確認 ——
     它可能是 ``6-50`` 或 ``6+50`` 的呈現，兩者等效盤口差 0.5 分。
+    使用者目視確認後傳 ``attested=True``，才會當成字面值採用。
     """
     if raw is None:
         return Line(0, Fraction(0), "", Confidence.UNREADABLE, "空值")
@@ -139,6 +156,9 @@ def parse_board_line(raw: str) -> Line:
 
     if match.group("dec") is not None:
         digits = match.group("dec")
+        value = Fraction(base) + Fraction(int(digits), 10 ** len(digits))
+        if attested:
+            return Line.from_effective(value, raw, note="使用者目視確認為字面值")
         return Line(
             base,
             Fraction(0),

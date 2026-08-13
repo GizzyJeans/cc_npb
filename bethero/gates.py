@@ -55,6 +55,13 @@ class DataReadiness:
 
     notes: list[str] = field(default_factory=list)
 
+    waived: frozenset[str] = frozenset()
+    """使用者明確放棄的門檻欄位名。
+
+    放棄是使用者的決定，但必須留下紀錄 —— `waived_reasons()` 會把它們
+    印進報告，不會靜靜消失。軟性門檻不可放棄 (放棄了模型也算不出東西)。
+    """
+
     # 缺了會直接讓比賽無法下注的硬性條件
     HARD_REQUIREMENTS = (
         ("line_type_confirmed", "盤型與結算規則未確認"),
@@ -73,7 +80,19 @@ class DataReadiness:
     )
 
     def blocking_reasons(self) -> list[str]:
-        return [msg for attr, msg in self.HARD_REQUIREMENTS if not getattr(self, attr)]
+        return [
+            msg
+            for attr, msg in self.HARD_REQUIREMENTS
+            if not getattr(self, attr) and attr not in self.waived
+        ]
+
+    def waived_reasons(self) -> list[str]:
+        """使用者放棄的門檻 —— 報告必須揭露。"""
+        return [
+            f"{msg}（使用者明示放棄）"
+            for attr, msg in self.HARD_REQUIREMENTS
+            if not getattr(self, attr) and attr in self.waived
+        ]
 
     def soft_gaps(self) -> list[str]:
         return [msg for attr, msg in self.SOFT_REQUIREMENTS if not getattr(self, attr)]
