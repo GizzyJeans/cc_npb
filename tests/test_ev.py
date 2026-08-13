@@ -172,3 +172,59 @@ class TestGates:
         for ev in (0.05, 0.5, 5.0):
             g = grade(ev=ev, edge_pp=50.0, readiness=DataReadiness())
             assert g.grade is not Grade.RECOMMEND
+
+
+class TestBreakeven:
+    def test_binary_line_needs_51_28_percent(self):
+        """半球盤無走盤: 0.95 的價格要 51.28% 才不虧。"""
+        from bethero.breakeven import required_win_prob
+        from bethero.lines import ICHI_YU_NI_EI
+
+        p = required_win_prob(ICHI_YU_NI_EI, 0.95, "primary", p_edge=0.0)
+        assert p == pytest.approx(1 / 1.95, abs=1e-6)
+
+    def test_push_lowers_the_bar(self):
+        """走盤機率越高，所需勝率越低。"""
+        from bethero.breakeven import required_win_prob
+        from bethero.lines import parse_board_line
+
+        flat = parse_board_line("1平")
+        no_push = required_win_prob(flat, 0.95, "primary", p_edge=0.0)
+        with_push = required_win_prob(flat, 0.95, "primary", p_edge=0.20)
+        assert with_push < no_push
+
+    def test_partial_win_lowers_the_bar_more_than_partial_loss(self):
+        from bethero.breakeven import required_win_prob
+        from bethero.lines import parse_board_line
+
+        plus = parse_board_line("1+80")   # 落在 1 時主方贏 80%
+        minus = parse_board_line("1-80")  # 落在 1 時主方輸 80%
+        p_plus = required_win_prob(plus, 0.95, "primary", p_edge=0.20)
+        p_minus = required_win_prob(minus, 0.95, "primary", p_edge=0.20)
+        assert p_plus < p_minus
+
+    def test_target_ev_raises_the_bar(self):
+        from bethero.breakeven import analyse
+        from bethero.lines import parse_board_line
+
+        b = analyse(parse_board_line("1平"), 0.95, "primary", 0.15, target_ev=0.04)
+        assert b.target_prob > b.breakeven_prob
+        assert b.required_edge_over_breakeven() == pytest.approx(4.0 / 1.95, abs=1e-6)
+
+    def test_ev_at_required_prob_hits_the_target(self):
+        """反推的機率代回 EV 公式應剛好等於目標。"""
+        from bethero.breakeven import _edge_payoff, required_win_prob
+        from bethero.lines import parse_board_line
+
+        line = parse_board_line("1-60")
+        hk, p_edge, target = 0.95, 0.18, 0.04
+        p_win = required_win_prob(line, hk, "primary", p_edge, target)
+        e = _edge_payoff(line, "primary", hk)
+        ev = p_win * hk + p_edge * e - (1 - p_win - p_edge)
+        assert ev == pytest.approx(target, abs=1e-9)
+
+    def test_vig_cost(self):
+        from bethero.breakeven import vig_cost
+
+        assert vig_cost(0.95) == pytest.approx(1.282, abs=1e-3)
+        assert vig_cost(0.93) > vig_cost(0.95)

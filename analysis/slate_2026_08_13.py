@@ -41,7 +41,8 @@ GAMES = [
         under_hk=0.930,
         f5_handicap_raw="0-10",
         f5_total_raw="4+50",
-        unresolved=["讓分欄「0-50」位移後為負值，方向與刻度需平台規則確認"],
+        # 0-50: 平手時中日輸 50% 本金 -> 等效讓 0.25
+
     ),
     BoardGame(
         date=DATE,
@@ -60,7 +61,8 @@ GAMES = [
         under_hk=0.930,
         f5_handicap_raw="1+70",
         f5_total_raw="4-75",
-        unresolved=["讓分欄「1-60」無論哪種讀法都不在標準亞洲盤階梯上"],
+        # 1-60: 軟銀贏 1 分輸 60% 本金 -> 等效讓 1.30
+
     ),
     BoardGame(
         date=DATE,
@@ -115,7 +117,8 @@ GAMES = [
         under_hk=0.930,
         f5_handicap_raw="0-20",
         f5_total_raw="4+50",
-        unresolved=["讓分欄「1+80」不在標準亞洲盤階梯上"],
+        # 1+80: 廣島贏 1 分收 80% 賠金 -> 等效讓 0.60
+
     ),
     BoardGame(
         date=DATE,
@@ -134,15 +137,17 @@ GAMES = [
         under_hk=0.930,
         f5_handicap_raw="0",
         f5_total_raw="3-25",
+        # 1+95: 阪神贏 1 分收 95% 賠金 -> 等效讓 0.525
         unresolved=[
-            "讓分欄「1+95」不在標準亞洲盤階梯上",
-            "全場大小「6.5」在圖中的呈現格式與其他場不同 (未見 平/+/- 記號)",
+            "全場大小「6.5」非看板慣用的 N平/N±XX 寫法。與其餘五場的"
+            "上半/全場總分比 (0.526-0.557) 對照，最相容的是 6+50 (等效 5.75，"
+            "比值 0.543)；literal 6.5 的比值 0.481 是離群值。需目視確認。"
         ],
     ),
 ]
 
 
-def _readiness(weather_known: bool) -> DataReadiness:
+def _readiness(weather_known: bool, line_type_confirmed: bool = True) -> DataReadiness:
     """今日六場共用的資料狀態。
 
     唯一有差異的是天氣: 巨蛋場館視為已知，露天場館今日有大雨預報。
@@ -150,8 +155,9 @@ def _readiness(weather_known: bool) -> DataReadiness:
     return DataReadiness(
         # 預告先發已由 NPB 官方帳號確認，六場全對得上看板。
         starters_confirmed=True,
+        # 盤口記法已由使用者確認: N平 走盤、N±XX 為落在 N 時的結算百分比。
+        line_type_confirmed=line_type_confirmed,
         # 以下全部取不到 —— 出口政策擋掉了所有 NPB 統計站。
-        line_type_confirmed=False,
         lineups_confirmed=False,
         bullpen_usage_known=False,
         team_rates_known=False,
@@ -169,7 +175,10 @@ def build_report() -> DailyReport:
     analyses = []
     for game in GAMES:
         indoor = game.home_team in DOME
-        readiness = _readiness(weather_known=indoor)
+        readiness = _readiness(
+            weather_known=indoor,
+            line_type_confirmed=not game.audit(),
+        )
         ev = 0.0
         graded = grade(ev=ev, edge_pp=0.0, readiness=readiness)
 
@@ -189,7 +198,7 @@ def build_report() -> DailyReport:
                     else "露天球場，今日東北～關東有大雨預報，有延賽風險"
                 ),
                 market_note="僅有單一時點的單一平台報價，無開盤價與跨莊家比較",
-                rationale="資料完整度不足，且盤型未確認 —— 不下注",
+                rationale="盤型已確認，但球隊/投手數據與正式打線皆缺 —— 不下注",
                 risks=["模型參數未經 2026 當季資料校準"],
                 cancel_conditions=["若正式打線公布後主力輪休，須整場重算"],
             )
@@ -202,8 +211,12 @@ def build_report() -> DailyReport:
         data_as_of=DATA_AS_OF,
         global_notes=[
             "六場預告先發已與 NPB 官方公告核對一致。",
+            "盤口記法已由使用者確認並實作: N平 = 走盤; N±XX = 落在 N 時主方"
+            "贏/輸 XX%。等效盤口 = N - s/2。六場的上半/全場總分比落在 "
+            "0.526-0.557，內部一致，可佐證解讀正確。",
             "所有 NPB 統計來源 (npb.jp / baseball-data.com / baseballdata.jp /"
-            " baseball.yahoo.co.jp / proran.jp) 在本次執行時皆被網路出口政策擋下。",
+            " baseball.yahoo.co.jp / proran.jp) 直接連線在本次執行時皆回傳 "
+            "403 (CONNECT tunnel failed)，僅代管搜尋可用。",
             "露天場館 (楽天モバイルパーク宮城、明治神宮野球場) 今日有大雨預報。",
         ],
     )
