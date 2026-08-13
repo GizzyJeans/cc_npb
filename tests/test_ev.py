@@ -82,6 +82,34 @@ class TestEvaluate:
         assert ev.push_prob == pytest.approx(0.20)
         assert ev.model_prob == pytest.approx(0.5)
 
+    def test_equivalent_prob_matches_model_prob_on_binary_line(self):
+        """純二元盤沒有部分結算，兩個定義必須完全相同。"""
+        probs = {Fraction(1): 0.55, Fraction(-1): 0.45}
+        ev = evaluate(probs, 0.95, 100_000, 0.50)
+        assert ev.equivalent_prob == pytest.approx(ev.model_prob)
+
+    def test_equivalent_prob_matches_model_prob_on_pure_push_line(self):
+        """N平 盤的走盤全額退回，去掉走盤後兩個定義也必須相同。"""
+        probs = {Fraction(1): 0.40, Fraction(0): 0.20, Fraction(-1): 0.40}
+        ev = evaluate(probs, 0.95, 100_000, 0.50)
+        assert ev.equivalent_prob == pytest.approx(ev.model_prob)
+
+    def test_partial_settlement_edge_is_not_understated(self):
+        """``N-25`` 這種盤口輸的是 25% 本金，不該被當成全輸。
+
+        小分機率 0.53、落在關鍵分 0.12 只輸 25%、其餘全輸。
+        有效過盤率只算 0.53，但等值勝率必須更高 —— 否則跟去水後的
+        市場機率相減會系統性低估優勢，讓 gates 誤判成「不下注」。
+        """
+        probs = {Fraction(1): 0.53, Fraction(-1, 4): 0.12, Fraction(-1): 0.35}
+        ev = evaluate(probs, 0.93, 100_000, 0.50)
+        assert ev.model_prob == pytest.approx(0.53)
+        assert ev.equivalent_prob > ev.model_prob
+        # 等值勝率必須真的還原 EV: EV = q*hk - (1-q)
+        q = ev.equivalent_prob
+        assert q * 0.93 - (1 - q) == pytest.approx(ev.ev)
+        assert ev.edge_pp == pytest.approx((q - 0.50) * 100)
+
     def test_stake_capped_at_1000(self):
         probs = {Fraction(1): 0.90, Fraction(-1): 0.10}
         ev = evaluate(probs, 0.95, 100_000, 0.50)
@@ -124,6 +152,7 @@ class TestGates:
             line_type_confirmed=True,
             starters_confirmed=True,
             lineups_confirmed=True,
+            prices_verified=True,
             bullpen_usage_known=True,
             team_rates_known=True,
             park_factor_known=True,
@@ -162,10 +191,22 @@ class TestGates:
             line_type_confirmed=True,
             starters_confirmed=True,
             lineups_confirmed=True,
+            prices_verified=True,
         )
         g = grade(ev=0.20, edge_pp=12.0, readiness=data)
         assert g.grade is Grade.OBSERVE
         assert "資料完整度不足" in g.reasons
+
+    def test_unverified_price_blocks_recommendation(self):
+        """賠率無法覆核時，資料再齊、EV 再高也只能到「觀察」。
+
+        EV 是賠率的函數 —— 賠率本身不可信，算出來的 EV 就沒有意義。
+        """
+        data = self.full_data()
+        data.prices_verified = False
+        g = grade(ev=0.20, edge_pp=12.0, readiness=data)
+        assert g.grade is Grade.OBSERVE
+        assert "賠率無法覆核（非當下可查證的報價）" in g.reasons
 
     def test_no_data_cannot_produce_recommendation(self):
         """核心安全性質: 空的資料狀態永遠不可能推薦。"""

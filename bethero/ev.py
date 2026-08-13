@@ -76,8 +76,22 @@ class BetEvaluation:
     ev: float
     """每 1 單位注碼的期望值 (小數，0.04 = +4%)。"""
 
+    equivalent_prob: float
+    """把部分輸贏折算後、與市場機率同基準的模型勝率。
+
+    `model_prob` (有效過盤率) 把「輸 25% 本金」當成全輸，因此在
+    ``N±XX`` 這種部分結算的盤口上，它跟去水後的兩面市場機率不是同一個
+    基準，直接相減會低估優勢。這裡改用「等值二元勝率」: 找一個 q，
+    使得同賠率下的純二元賭局有相同的每單位期望值 ——
+
+        EV / (1 - push) = q * hk - (1 - q)
+
+    純二元盤 (無走盤、無部分結算) 與純走盤盤 (``N平``) 都會化簡回
+    `model_prob`，所以這只影響部分結算的盤口。
+    """
+
     edge_pp: float
-    """模型機率 - 市場機率，以百分點計。"""
+    """等值勝率 - 市場機率，以百分點計。"""
 
     min_hk: float
     """EV 歸零的最低可接受賠率。"""
@@ -117,13 +131,18 @@ def evaluate(
     stake = min(bankroll * kelly * kelly_multiplier, max_stake)
     stake = max(stake, 0.0)
 
+    equivalent = (
+        (ev / live + 1.0) / (1.0 + offered_hk) if live > 1e-12 else 0.0
+    )
+
     return BetEvaluation(
         model_prob=model_prob,
         market_prob=market_prob,
+        equivalent_prob=equivalent,
         fair_hk=fair_hk,
         offered_hk=offered_hk,
         ev=ev,
-        edge_pp=(model_prob - market_prob) * 100.0,
+        edge_pp=(equivalent - market_prob) * 100.0,
         min_hk=min_hk,
         kelly_fraction=kelly,
         stake=stake,

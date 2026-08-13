@@ -32,6 +32,15 @@ class DataReadiness:
     starters_confirmed: bool = False
     """預告先發已確認。"""
 
+    prices_verified: bool = False
+    """本場要下的那個賠率是 **當下、可覆核** 的報價。
+
+    這是硬性條件，不是軟性的。EV 是賠率的函數: 賠率若無法覆核，
+    算出來的 EV 就沒有意義，再漂亮的模型機率也不能拿來下注。
+    與 `market_prices_known` 分開 —— 後者問的是「有沒有開盤價與跨莊家
+    比價可以參考」(軟性)，這一項問的是「手上這個數字本身可不可信」。
+    """
+
     lineups_confirmed: bool = False
     """正式先發打線已公布。"""
 
@@ -67,6 +76,7 @@ class DataReadiness:
         ("line_type_confirmed", "盤型與結算規則未確認"),
         ("starters_confirmed", "預告先發未確認"),
         ("lineups_confirmed", "正式先發打線尚未公布"),
+        ("prices_verified", "賠率無法覆核（非當下可查證的報價）"),
     )
 
     # 影響模型可信度的軟性條件
