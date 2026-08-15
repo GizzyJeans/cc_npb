@@ -1,9 +1,12 @@
-"""2026-08-15 NPB 14:00 三場 —— 模型定價與資料完整度盤點。
+"""2026-08-15 NPB 全六場 —— 模型定價與資料完整度盤點。
 
 執行: ``python3 analysis/slate_2026_08_15.py``
 
-使用者提供的看板是 8/15 開賽 14:00 JST 的三場 (13:00 GMT+8)，
-且第一次帶了 **上半場 (前 5 局)** 的讓分與大小。
+使用者先提供了 14:00 JST 三場的詳細頁 (含上半場盤)，稍後再提供
+完整六場的列表看板。本檔以 **完整看板** 為準。
+
+盤口在兩次截圖之間有移動 (見 `LINE_MOVES`) —— 這是目前唯一能拿到的
+市場動向資訊。
 
 這一版新增的東西
 ----------------
@@ -40,27 +43,17 @@ START_JST = "14:00 JST（看板 13:00 為台北時間）"
 
 GAMES = [
     BoardGame(
-        date=DATE, start_time=START_JST,
+        date=DATE, start_time="14:00 JST（看板 13:00 台北）",
         away_team="讀賣巨人", home_team="中日龍",
         away_starter="竹丸和幸 (左)", home_starter="穆勒 (左)",
         venue="バンテリンドーム ナゴヤ (巨蛋)",
-        handicap_raw="1+70", handicap_side="home",
+        handicap_raw="1+80", handicap_side="home",
         handicap_home_hk=0.950, handicap_away_hk=0.950,
         total_raw="7+50", over_hk=0.930, under_hk=0.930,
         f5_handicap_raw="0-35", f5_total_raw="3.5",
     ),
     BoardGame(
-        date=DATE, start_time=START_JST,
-        away_team="日本火腿", home_team="歐力士猛牛",
-        away_starter="加藤貴之 (左)", home_starter="寺西成騎 (右)",
-        venue="京セラドーム大阪 (巨蛋)",
-        handicap_raw="1-25", handicap_side="away",
-        handicap_home_hk=0.950, handicap_away_hk=0.950,
-        total_raw="7+50", over_hk=0.930, under_hk=0.930,
-        f5_handicap_raw="0-90", f5_total_raw="3.5",
-    ),
-    BoardGame(
-        date=DATE, start_time=START_JST,
+        date=DATE, start_time="14:00 JST（看板 13:00 台北）",
         away_team="東北樂天金鷲", home_team="福岡軟銀鷹",
         away_starter="早川隆久 (左)", home_starter="上茶谷大河 (右)",
         venue="みずほPayPayドーム (巨蛋)",
@@ -68,9 +61,45 @@ GAMES = [
         handicap_home_hk=0.950, handicap_away_hk=0.950,
         total_raw="7.5", over_hk=0.930, under_hk=0.930,
         f5_handicap_raw="0.5", f5_total_raw="4+50",
-        # 7.5 / 0.5 為裸小數，依看板慣例是字面半球盤 (不走盤)；
-        # 同平台的 N±XX 一律帶正負號，使用者 8/13 已確認過此讀法。
         attested_fields=frozenset({"total"}),
+    ),
+    BoardGame(
+        date=DATE, start_time="14:00 JST（看板 13:00 台北）",
+        away_team="日本火腿", home_team="歐力士猛牛",
+        away_starter="加藤貴之 (左)", home_starter="寺西成騎 (右)",
+        venue="京セラドーム大阪 (巨蛋)",
+        handicap_raw="1-30", handicap_side="away",
+        handicap_home_hk=0.950, handicap_away_hk=0.950,
+        total_raw="7+25", over_hk=0.930, under_hk=0.930,
+        f5_handicap_raw="0-90", f5_total_raw="3.5",
+    ),
+    BoardGame(
+        date=DATE, start_time="17:00 JST（看板 16:00 台北）",
+        away_team="千葉羅德", home_team="西武獅",
+        away_starter="傑克森 (右)", home_starter="隅田知一郎 (左)",
+        venue="ベルーナドーム (巨蛋)",
+        handicap_raw="1+20", handicap_side="home",
+        handicap_home_hk=0.950, handicap_away_hk=0.950,
+        total_raw="6.5", over_hk=0.930, under_hk=0.930,
+        attested_fields=frozenset({"total"}),
+    ),
+    BoardGame(
+        date=DATE, start_time="18:00 JST（看板 17:00 台北）",
+        away_team="阪神虎", home_team="廣島鯉魚",
+        away_starter="大竹耕太郎 (左)", home_starter="斉藤優汰 (右)",
+        venue="マツダスタジアム (露天)",
+        handicap_raw="1-20", handicap_side="away",
+        handicap_home_hk=0.950, handicap_away_hk=0.950,
+        total_raw="7平", over_hk=0.930, under_hk=0.930,
+    ),
+    BoardGame(
+        date=DATE, start_time="18:00 JST（看板 17:00 台北）",
+        away_team="橫濱DeNA灣星", home_team="養樂多燕子",
+        away_starter="篠木健太郎 (右)", home_starter="增居翔太 (左)",
+        venue="明治神宮野球場 (露天)",
+        handicap_raw="1+20", handicap_side="away",
+        handicap_home_hk=0.950, handicap_away_hk=0.950,
+        total_raw="8+25", over_hk=0.930, under_hk=0.930,
     ),
 ]
 
@@ -78,22 +107,51 @@ JP = {
     "中日龍": "中日", "讀賣巨人": "巨人",
     "歐力士猛牛": "オリックス", "日本火腿": "日本ハム",
     "福岡軟銀鷹": "ソフトバンク", "東北樂天金鷲": "楽天",
+    "西武獅": "西武", "千葉羅德": "ロッテ",
+    "廣島鯉魚": "広島", "阪神虎": "阪神",
+    "養樂多燕子": "ヤクルト", "橫濱DeNA灣星": "DeNA",
 }
 PARK_KEY = {
     "バンテリンドーム ナゴヤ (巨蛋)": "バンテリンドーム",
     "京セラドーム大阪 (巨蛋)": "京セラD大阪",
     "みずほPayPayドーム (巨蛋)": "みずほPayPay",
+    "ベルーナドーム (巨蛋)": "ベルーナドーム",
+    "マツダスタジアム (露天)": "マツダスタジアム",
+    "明治神宮野球場 (露天)": "神宮",
+}
+
+OPEN_AIR = {"マツダスタジアム", "神宮"}
+
+# 同一平台兩個時點的盤口差異 (12:00 前後的詳細頁 -> 13:10 的列表看板)。
+# 這不是開盤價，但是目前唯一能取得的市場動向。
+LINE_MOVES = {
+    "中日龍": "讓分 1+70 → 1+80（中日讓得更多）；大小 7+50 未動",
+    "福岡軟銀鷹": "未動（讓分 1-75、大小 7.5）",
+    "歐力士猛牛": "讓分 1-25 → 1-30；大小 7+50 → 7+25"
+                  "（等效由 6.75 升到 6.875，市場往大分方向修）",
+}
+
+WEATHER = {
+    "マツダスタジアム": "露天。8/15 九州～東北大範圍有局部雷陣雨（ゲリラ雷雨）"
+                       "預警 —— 有延賽風險；マツダ 通常在開賽前 4 小時內才宣布中止",
+    "神宮": "露天。關東同屬 8/15 局部雷陣雨預警範圍；神宮 8/13 已因雨中止過一次",
 }
 
 # 今日先發 (npb.jp idp1_<team>.html, 2026-08-15 擷取)。
 # is_opener: 季內單場平均局數 < 3 局 —— 實際用法是後援，今天等於開局投手。
 STARTERS = {
-    "中日": ("マラー", 0.9084, 6.33, "13 場 82.1 局 防禦率 2.73", False),
-    "巨人": ("竹丸和幸", 1.0509, 5.88, "17 場 100 局 防禦率 3.33、107 三振", False),
-    "オリックス": ("寺西成騎", 1.2360, 1.88, "26 場 49 局 防禦率 4.22", True),
-    "日本ハム": ("加藤貴之", 0.9270, 5.67, "17 場 96.1 局 防禦率 2.71、僅 9 四球", False),
+    "中日": ("マラー", 0.9386, 6.33, "13 場 82.1 局 防禦率 2.73", False),
+    "巨人": ("竹丸和幸", 1.0510, 5.88, "17 場 100 局 防禦率 3.33、107 三振", False),
+    "オリックス": ("寺西成騎", 1.2359, 1.88, "26 場 49 局 防禦率 4.22", True),
+    "日本ハム": ("加藤貴之", 0.9269, 5.67, "17 場 96.1 局 防禦率 2.71、僅 9 四球", False),
     "ソフトバンク": ("上茶谷大河", 0.8063, 2.00, "30 場 60 局 防禦率 1.95", True),
-    "楽天": ("早川隆久", 0.8611, 6.67, "15 場 100 局 防禦率 2.79、103 三振", False),
+    "楽天": ("早川隆久", 0.8606, 6.67, "15 場 100 局 防禦率 2.79、103 三振", False),
+    "西武": ("隅田知一郎", 0.9183, 7.06, "17 場 120 局 防禦率 2.55、每場 7.1 局", False),
+    "ロッテ": ("ジャクソン", 0.9393, 6.18, "19 場 117.1 局 防禦率 3.22、42 四球", False),
+    "広島": ("斉藤優汰", 1.0680, 4.73, "5 場 23.2 局 防禦率 4.18（樣本僅 23.2 局）", False),
+    "阪神": ("大竹耕太郎", 1.0609, 5.90, "13 場 76.2 局 防禦率 2.82", False),
+    "ヤクルト": ("増居翔太", 0.7903, 4.25, "4 場 17 局 防禦率 0.53（樣本僅 17 局，收縮後拉回甚多）", False),
+    "DeNA": ("篠木健太郎", 1.1004, 5.70, "11 場 62.2 局 防禦率 4.45", False),
 }
 
 BULLPEN_NOTE = {
@@ -103,6 +161,12 @@ BULLPEN_NOTE = {
     "日本ハム": "8/13 用 5 人、8/14 用 3 人（達 102 球）；堀連兩日登板",
     "ソフトバンク": "8/13 用 4 人、8/14 用 3 人（大津 112 球）；無連兩日登板",
     "楽天": "8/13 用 5 人、8/14 用 5 人（藤井 84 球）；無連兩日登板",
+    "西武": "8/13 用 5 人、8/14 用 **7 人**，佐藤隼、黒木、豆田三人連兩日登板 —— 牛棚負荷全聯盟最重",
+    "ロッテ": "8/13 用 4 人、8/14 用 3 人（小島 93 球）；無連兩日登板",
+    "広島": "8/13 因雨中止、8/14 只用 2 人（森下 113 球幾乎完投）—— 牛棚極為充足",
+    "阪神": "8/13 用 4 人、8/14 用 4 人（才木僅 54 球即退場、門別 30 球）",
+    "ヤクルト": "8/13 因雨中止、8/14 用 4 人（奥川 110 球）",
+    "DeNA": "8/13 用 4 人、8/14 用 4 人（平良 93 球）",
 }
 
 ENV = NPBEnvironment(
@@ -162,7 +226,7 @@ def readiness_for(game: BoardGame) -> DataReadiness:
         bullpen_usage_known=True,
         team_rates_known=True,
         park_factor_known=True,
-        weather_known=True,          # 三場全為巨蛋
+        weather_known=PARK_KEY[game.venue] not in OPEN_AIR,
         injuries_known=False,
         market_prices_known=False,
     )
@@ -229,11 +293,13 @@ def build_report() -> DailyReport:
                          f"{game.away_team}：{BULLPEN_NOTE[away]}",
             park_weather_note=(
                 f"球場係數 {cal.PARK_FACTORS_2026[PARK_KEY[game.venue]]:.3f}（2026 實測）。"
-                "巨蛋，天氣不影響"
+                + WEATHER.get(PARK_KEY[game.venue], "巨蛋，天氣不影響")
             ),
             market_note=(
-                f"賠率已由看板截圖確認。上半盤 {game.f5_handicap_raw}／"
-                f"{game.f5_total_raw} 已記錄但不定價（理由見風險欄）"
+                "賠率已由看板截圖確認。"
+                + (f"上半盤 {game.f5_handicap_raw}／{game.f5_total_raw} 已記錄但不定價；"
+                   if game.f5_total_raw else "")
+                + "盤口移動：" + LINE_MOVES.get(game.home_team, "無第二個時點可比對")
             ),
             rationale=(
                 f"模型預期總分 {dists.expected_total():.2f}"
@@ -242,7 +308,9 @@ def build_report() -> DailyReport:
                 f"{label} 模型機率 {best.model_prob:.1%}、EV {best.ev:+.1%}"
             ),
             risks=risks,
-            cancel_conditions=["正式打線公布後若主力輪休須重算", "先發臨時更換即作廢"],
+            cancel_conditions=["正式打線公布後若主力輪休須重算", "先發臨時更換即作廢"]
+            + (["露天球場，達延賽標準即取消"]
+               if PARK_KEY[game.venue] in OPEN_AIR else []),
         ))
 
     return DailyReport(
