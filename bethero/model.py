@@ -141,6 +141,46 @@ class GameModel:
                         grid[a][final] += p * p9
         return grid
 
+    def partial_distributions(self, share: float) -> "GameDistributions":
+        """前段比賽 (例如上半場 = 前 5 局) 的分布。
+
+        `share` 是該段佔全場得分的比例。這一段 **不需要** 九局下的特殊處理:
+        比賽還沒結束，主隊一定會打完自己的半局，兩隊攻擊次數相同。
+        也沒有延長局，因此上半場盤沒有和局以外的額外處理。
+
+        共享的 Gamma 環境因子仍然保留 —— 球場、天氣、主審好球帶在
+        前五局一樣會讓兩隊得分同向偏移。
+        """
+        lam_h = self.lam_home * share
+        lam_a = self.lam_away * share
+
+        margin_pmf: dict[int, float] = {}
+        total_pmf: dict[int, float] = {}
+        p_tie = 0.0
+        for g, w in self._gamma_nodes():
+            home_pmf = _poisson_pmf(lam_h * g, MAX_RUNS)
+            away_pmf = _poisson_pmf(lam_a * g, MAX_RUNS)
+            for a in range(MAX_RUNS + 1):
+                pa = away_pmf[a] * w
+                if pa < 1e-12:
+                    continue
+                for h in range(MAX_RUNS + 1):
+                    p = pa * home_pmf[h]
+                    if p < 1e-14:
+                        continue
+                    margin_pmf[h - a] = margin_pmf.get(h - a, 0.0) + p
+                    total_pmf[a + h] = total_pmf.get(a + h, 0.0) + p
+                    if a == h:
+                        p_tie += p
+
+        return GameDistributions(
+            margin_pmf=margin_pmf,
+            total_pmf=total_pmf,
+            lam_home=lam_h,
+            lam_away=lam_a,
+            p_tie=p_tie,
+        )
+
     def distributions(self) -> "GameDistributions":
         """把聯合分布轉成下注需要的邊際分布 (含延長局處理)。"""
         grid = self.score_grid()

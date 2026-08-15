@@ -203,3 +203,43 @@ class TestOutcomeProbs:
         pmf = {2: 0.40, 1: 0.20, 0: 0.25, -1: 0.15}
         probs = handicap_outcome_probs(L("1-25"), pmf)
         assert sum(probs.values()) == pytest.approx(1.0)
+
+
+class TestMarketSpecificAudit:
+    """`audit_for` 只問「要下的那個盤」能不能安心結算。"""
+
+    def _board(self):
+        from bethero.board import BoardGame
+        return BoardGame(
+            date="2026-08-15", start_time="14:00",
+            away_team="讀賣巨人", home_team="中日龍",
+            handicap_raw="1+70", handicap_side="home",
+            total_raw="7+50",
+            f5_handicap_raw="0-35", f5_total_raw="3.5",
+        )
+
+    def test_ambiguous_f5_does_not_block_full_game_total(self):
+        board = self._board()
+        # 上半大小的裸小數確實有疑慮，整場 audit 必須揭露
+        assert any("上半大小" in p for p in board.audit())
+        # 但全場大小是另一個盤，不該被它擋掉
+        assert board.audit_for("total") == []
+        assert board.audit_for("f5_total") != []
+
+    def test_unresolved_applies_to_every_market(self):
+        board = self._board()
+        board.unresolved.append("人工標記: 讓分欄位反光看不清")
+        for market in ("handicap", "total", "f5_handicap", "f5_total"):
+            assert board.audit_for(market)
+
+    def test_missing_handicap_side_blocks_only_handicap_markets(self):
+        board = self._board()
+        board.handicap_side = ""
+        assert any("讓分方向" in p for p in board.audit_for("handicap"))
+        assert any("讓分方向" in p for p in board.audit_for("f5_handicap"))
+        assert board.audit_for("total") == []
+
+    def test_unknown_market_rejected(self):
+        import pytest as _pytest
+        with _pytest.raises(ValueError):
+            self._board().audit_for("moneyline")
