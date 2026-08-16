@@ -269,3 +269,44 @@ class TestBreakeven:
 
         assert vig_cost(0.95) == pytest.approx(1.282, abs=1e-3)
         assert vig_cost(0.93) > vig_cost(0.95)
+
+
+class TestWaivableSoftGate:
+    """軟性門檻只有 weather_known 放棄得掉，且必須留下紀錄。"""
+
+    def _open_air(self, waive_weather):
+        waived = {"weather_known"} if waive_weather else set()
+        return DataReadiness(
+            line_type_confirmed=True, starters_confirmed=True,
+            lineups_confirmed=True, prices_verified=True,
+            bullpen_usage_known=True, team_rates_known=True,
+            park_factor_known=True, injuries_known=True,
+            weather_known=False, market_prices_known=False,
+            waived=frozenset(waived),
+        )
+
+    def test_weather_gap_blocks_when_not_waived(self):
+        data = self._open_air(waive_weather=False)
+        assert "天氣資訊不明" in data.soft_gaps()
+
+    def test_waiving_weather_clears_the_gap_but_is_disclosed(self):
+        data = self._open_air(waive_weather=True)
+        assert "天氣資訊不明" not in data.soft_gaps()
+        assert any("天氣" in r for r in data.waived_reasons())
+
+    def test_other_soft_gates_cannot_be_waived_away(self):
+        """球隊得分率沒有就是算不出來，放棄它不該讓門檻放行。"""
+        data = DataReadiness(
+            line_type_confirmed=True, starters_confirmed=True,
+            lineups_confirmed=True, prices_verified=True,
+            team_rates_known=False,
+            waived=frozenset({"team_rates_known"}),
+        )
+        assert "球隊進攻/投手率統計無法取得" in data.soft_gaps()
+
+    def test_higher_threshold_applies_to_open_air(self):
+        data = self._open_air(waive_weather=True)
+        assert grade(ev=0.05, edge_pp=5.0, readiness=data,
+                     min_ev=0.07).grade is Grade.NO_BET
+        assert grade(ev=0.08, edge_pp=5.0, readiness=data,
+                     min_ev=0.07).grade is Grade.RECOMMEND

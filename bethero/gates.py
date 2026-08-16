@@ -68,8 +68,18 @@ class DataReadiness:
     """使用者明確放棄的門檻欄位名。
 
     放棄是使用者的決定，但必須留下紀錄 —— `waived_reasons()` 會把它們
-    印進報告，不會靜靜消失。軟性門檻不可放棄 (放棄了模型也算不出東西)。
+    印進報告，不會靜靜消失。
+
+    軟性門檻原則上 **不該** 放棄: 少了球隊得分率或球場係數，模型根本
+    算不出東西，放棄等於自欺。唯一的例外是 `weather_known` ——
+    球場係數本身是整季配適出來的，已經內含該球場的 **常態** 風況，
+    缺的只是「今天偏離常態多少」。那是增加變異、不是造成偏誤，
+    所以可以用「提高 EV 門檻」來補償，而不是一刀切掉整個露天市場。
+    放棄它時務必同時調高 `min_ev`，見 `WAIVABLE_SOFT`。
     """
+
+    WAIVABLE_SOFT = frozenset({"weather_known"})
+    """唯一允許放棄的軟性門檻。其餘軟性門檻放棄了模型就沒有輸入可用。"""
 
     # 缺了會直接讓比賽無法下注的硬性條件
     HARD_REQUIREMENTS = (
@@ -97,15 +107,25 @@ class DataReadiness:
         ]
 
     def waived_reasons(self) -> list[str]:
-        """使用者放棄的門檻 —— 報告必須揭露。"""
+        """使用者放棄的門檻 —— 報告必須揭露 (硬性與軟性都算)。"""
         return [
             f"{msg}（使用者明示放棄）"
-            for attr, msg in self.HARD_REQUIREMENTS
+            for attr, msg in self.HARD_REQUIREMENTS + self.SOFT_REQUIREMENTS
             if not getattr(self, attr) and attr in self.waived
         ]
 
     def soft_gaps(self) -> list[str]:
-        return [msg for attr, msg in self.SOFT_REQUIREMENTS if not getattr(self, attr)]
+        """尚未滿足、且未被放棄的軟性條件。
+
+        只有 `WAIVABLE_SOFT` 裡的欄位放棄得掉; 放棄其他軟性欄位會被忽略，
+        以免「放棄」變成繞過資料不足的萬用後門。
+        """
+        return [
+            msg
+            for attr, msg in self.SOFT_REQUIREMENTS
+            if not getattr(self, attr)
+            and not (attr in self.waived and attr in self.WAIVABLE_SOFT)
+        ]
 
     def completeness(self) -> float:
         fields = self.HARD_REQUIREMENTS + self.SOFT_REQUIREMENTS

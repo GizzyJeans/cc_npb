@@ -23,6 +23,19 @@
 EV 就沒有意義。它跟軟性的 `market_prices_known`（有沒有開盤價與跨莊家
 比價可參考）分開 —— 後者是「參考資訊不足」，前者是「手上的數字本身不可信」。
 
+### 露天球場 (2026-08-16 起)
+
+露天球場拿不到逐時風向與氣溫。原本這會讓軟性缺口變成 3 項而直接封鎖，
+等於長期放棄約一半的賽程。現在改成 **放棄 `weather_known` + 提高 EV 門檻
+到 +7%**（巨蛋維持 +4%）:
+
+* 球場係數是整季配適的，已內含該球場的 **常態** 風況；缺的只是
+  「今天偏離常態多少」—— 那是增加變異、不是造成偏誤。
+* 放棄這件事會照實印在報告的「已放棄的門檻」欄，不會靜靜消失。
+* `DataReadiness.WAIVABLE_SOFT` 只允許 `weather_known` 被放棄。
+  放棄 `team_rates_known` 之類的會被忽略 —— 沒有那些資料模型根本算不出來，
+  「放棄」不能變成繞過資料不足的萬用後門（有測試守著）。
+
 任何一項沒過，最好的結果是「觀察」。空的 `DataReadiness()` 不論 EV
 算出多少都不可能推薦 —— 這條性質有測試守著
 (`test_no_data_cannot_produce_recommendation`)。
@@ -40,7 +53,9 @@ EV 就沒有意義。它跟軟性的 `market_prices_known`（有沒有開盤價�
 | `bethero.bankroll` | 本金、單注上限、單日曝險上限 |
 | `bethero.report` | 繁體中文報告輸出 |
 | `config.npb_priors` | 校準狀態 + **已知偏誤** |
-| `config.calibration_2026` | 2026 當季實測值 (618 場) 與推導方法 |
+| `config.calibration_2026` | 2026 當季實測值 (637 場) 與推導方法 |
+| `analysis.settle` / `analysis.scorecard` | 逐日對帳與跨日偏誤診斷 |
+| `analysis.validate_oos` | 大小分模型的樣本外驗證 |
 
 ## 盤口解析
 
@@ -158,7 +173,7 @@ NPB 專屬處理:
 ## 使用
 
 ```bash
-python3 -m pytest -q                      # 95 項測試
+python3 -m pytest -q                      # 103 項測試
 python3 analysis/slate_2026_08_13.py      # 產生當日報告
 ```
 

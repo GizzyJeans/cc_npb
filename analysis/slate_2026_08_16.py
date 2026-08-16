@@ -99,6 +99,14 @@ PARK_KEY = {
 
 OPEN_AIR = {"マツダスタジアム", "神宮"}
 
+OPEN_AIR_MIN_EV = 0.07
+"""露天球場的 EV 門檻 (一般為 +4%)。
+
+2026-08-16 使用者決定: 露天不再直接封鎖，改成要求更高的 EV。
+理由是球場係數本身已內含該球場的常態風況，缺的只是「今日偏離常態多少」
+—— 那是增加變異而非造成偏誤，用較高門檻補償比一刀切合理。
+放棄 `weather_known` 這件事會照實印在報告的「已放棄的門檻」欄。"""
+
 # 同一平台兩個時點的盤口差異 (12:00 前後的詳細頁 -> 13:10 的列表看板)。
 # 這不是開盤價，但是目前唯一能取得的市場動向。
 LINE_MOVES = {}
@@ -183,12 +191,16 @@ def readiness_for(game: BoardGame) -> DataReadiness:
         line_type_confirmed=not game.audit_for("total"),
         starters_confirmed=True,
         lineups_confirmed=False,
-        waived=frozenset({"lineups_confirmed"}),
+        waived=(frozenset({"lineups_confirmed", "weather_known"})
+                if PARK_KEY[game.venue] in OPEN_AIR
+                else frozenset({"lineups_confirmed"})),
         prices_verified=True,
         bullpen_usage_known=True,
         team_rates_known=True,
         park_factor_known=True,
-        weather_known=PARK_KEY[game.venue] not in OPEN_AIR,
+        # 露天球場仍然沒有逐時風向/氣溫 —— 照實記為 False，但依使用者
+        # 2026-08-16 的決定放棄此門檻，改用 OPEN_AIR_MIN_EV 補償。
+        weather_known=False if PARK_KEY[game.venue] in OPEN_AIR else True,
         injuries_known=False,
         market_prices_known=False,
     )
@@ -209,7 +221,9 @@ def build_report() -> DailyReport:
         under = evaluate(total_outcome_probs(game.total, dists.total_pmf, "under"),
                          game.under_hk, Bankroll().total, market[1])
         best, label = (over, "大分") if over.ev >= under.ev else (under, "小分")
-        graded = grade(ev=best.ev, edge_pp=best.edge_pp, readiness=readiness)
+        open_air = PARK_KEY[game.venue] in OPEN_AIR
+        graded = grade(ev=best.ev, edge_pp=best.edge_pp, readiness=readiness,
+                       min_ev=OPEN_AIR_MIN_EV if open_air else 0.04)
 
         sp_h, sp_a = STARTERS[home], STARTERS[away]
         opener_bits = [f"{n} 為開局投手（季內每場僅 {ip:.1f} 局）"
