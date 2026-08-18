@@ -47,6 +47,15 @@ class DataReadiness:
     bullpen_usage_known: bool = False
     """牛棚近三日使用量可查。"""
 
+    starter_stats_known: bool = False
+    """兩隊先發投手都查得到本季成績。
+
+    AGENT.md 的資料清單第 5 項要求「先發投手近期表現」，但先前沒有對應
+    欄位。新人首度先發 (例如 2026-08-18 羅德的吉川悠斗，支配下登錄但
+    本季 0 場登板) 時，模型最大的單一變因等於沒有輸入 —— 用聯盟平均
+    當先驗不是造假，但不確定度遠大於有 100 局樣本的投手，必須記為缺口。
+    """
+
     team_rates_known: bool = False
     """球隊進攻/投手率統計可查。"""
 
@@ -92,6 +101,7 @@ class DataReadiness:
     # 影響模型可信度的軟性條件
     SOFT_REQUIREMENTS = (
         ("bullpen_usage_known", "牛棚近三日使用量不明"),
+        ("starter_stats_known", "先發投手本季成績查不到（新人或首度登板）"),
         ("team_rates_known", "球隊進攻/投手率統計無法取得"),
         ("park_factor_known", "球場得分因子無法取得"),
         ("weather_known", "天氣資訊不明"),

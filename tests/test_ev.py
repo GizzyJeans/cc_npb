@@ -154,6 +154,7 @@ class TestGates:
             lineups_confirmed=True,
             prices_verified=True,
             bullpen_usage_known=True,
+            starter_stats_known=True,
             team_rates_known=True,
             park_factor_known=True,
             weather_known=True,
@@ -279,8 +280,8 @@ class TestWaivableSoftGate:
         return DataReadiness(
             line_type_confirmed=True, starters_confirmed=True,
             lineups_confirmed=True, prices_verified=True,
-            bullpen_usage_known=True, team_rates_known=True,
-            park_factor_known=True, injuries_known=True,
+            bullpen_usage_known=True, starter_stats_known=True,
+            team_rates_known=True, park_factor_known=True, injuries_known=True,
             weather_known=False, market_prices_known=False,
             waived=frozenset(waived),
         )
