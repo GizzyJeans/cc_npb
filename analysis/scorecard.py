@@ -46,7 +46,8 @@ def main() -> None:
         day = [r for r in rows if r["date"] == date and r["stake"] > 0]
         pl = sum(payout(r["ratio"], r["stake"], r["hk"])
                  for r in day if r["ratio"] is not None)
-        st = sum(r["stake"] for r in day)
+        # 中止退回本金的部位沒有實際承擔風險，不計入下注總額 (否則 ROI 被稀釋)
+        st = sum(r["stake"] for r in day if r["ratio"] is not None)
         total_pl += pl
         total_stake += st
         print(f"| {date} | {len(day)} | {st:,.0f} | {pl:+,.0f} |")
