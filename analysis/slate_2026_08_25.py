@@ -319,20 +319,39 @@ def build_report() -> DailyReport:
             "沒有安全邊際，不定價",
         ]
         if thin:
-            s_d = stress_season_defence(game).distributions()
+            s_model = stress_season_defence(game)
+            s_d = s_model.distributions()
             s_ev = evaluate(
                 total_outcome_probs(game.total, s_d.total_pmf,
                                     "over" if label == "大分" else "under"),
                 game.over_hk, Bankroll().total,
                 market[0] if label == "大分" else market[1]).ev
+            # 方向要逐隊算，不能套通則。收縮是把先發拉向 **聯盟** 平均，
+            # 但對總分的影響取決於混成後的當日守備係數與該隊 **季內** 守備
+            # 係數孰高孰低 —— 兩者可以往相反方向跑。
+            bits = []
+            for team, is_home in ((home, True), (away, False)):
+                if STARTER_IP[team] >= MIN_STARTER_IP:
+                    continue
+                today = (model.home if is_home else model.away).def_factor
+                season = cal.TEAM_DEFENCE_SEASON[team]
+                bits.append(
+                    f"{STARTERS[team][0]}：當日守備係數 {today:.3f} vs 該隊季內 "
+                    f"{season:.3f}，模型{'高估' if today > season else '低估'}"
+                    f"{team}的失分"
+                )
+            delta = s_d.expected_total() - dists.expected_total()
             risks.append(
                 "先發樣本不足：" + "、".join(thin)
-                + f"。收縮把他們拉向聯盟平均是對的，但誤差方向是"
-                  f"**高估好投手的失分**（モイネロ 12 局實際失分率 0.75，"
-                  f"係數卻是 0.874），也就是把模型推向大分。"
-                  f"壓力測試：這些投手改用該隊季內守備係數後預期總分 "
-                  f"{s_d.expected_total():.2f}（原 {dists.expected_total():.2f}）、"
-                  f"{label} EV {s_ev:+.1%}（原 {best.ev:+.1%}）"
+                + "。收縮把他們拉向聯盟平均是對的，但對總分的淨影響要逐隊看，"
+                  "不能套通則 —— " + "；".join(bits)
+                + f"。壓力測試：改用季內守備係數後預期總分 "
+                  f"{s_d.expected_total():.2f}（原 {dists.expected_total():.2f}，"
+                  f"{delta:+.2f}）、{label} EV {s_ev:+.1%}（原 {best.ev:+.1%}）。"
+                  f"也就是說目前的模型輸入相對保守地偏向"
+                  f"{'小分' if delta > 0 else '大分'}，"
+                  f"這個 {label} 的 EV 若有偏差，比較可能是被"
+                  f"{'低估' if s_ev > best.ev else '高估'}了"
             )
 
         analyses.append(GameAnalysis(
