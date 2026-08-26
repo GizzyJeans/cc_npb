@@ -26,10 +26,12 @@ def main() -> None:
             final = spec["finals"][game.home_team]
             pred = slate.build_model(game).distributions().expected_total()
             line = float(game.total.effective)
+            park = slate.PARK_KEY[game.venue]
             rows.append({
                 "date": date, "game": game.matchup, "side": side,
                 "stake": stake, "hk": hk, "status": status,
                 "pred": pred, "line": line,
+                "open_air": park in getattr(slate, "OPEN_AIR", set()),
                 "actual": None if final is None else sum(final),
                 "ratio": None if final is None
                 else settle_total(game.total, sum(final), side),
@@ -84,6 +86,42 @@ def main() -> None:
         print(f"| {r['date'][5:]} | {r['game']} | {r['pred']:.2f} | {r['line']:.3f} "
               f"| {r['actual']} | {r['pred'] - r['line']:+.2f} "
               f"| {r['actual'] - r['pred']:+.2f} |")
+
+    # ---------- 露天 vs 巨蛋 ----------
+    # +7% 的露天 EV 門檻是用來補償「拿不到當日天氣」的。這個門檻的高度
+    # 只有在露天的誤差真的比較大時才站得住，所以要持續追蹤，不能只在
+    # 露天場出現大失誤的那天才臨時查一次。
+    print("\n## 露天 vs 巨蛋（露天 EV 門檻 +7% 的依據）\n")
+    print("| 球場類型 | 場數 | 平均誤差 | 平均絕對誤差 | 標準誤 |")
+    print("|---|---|---|---|---|")
+    groups = {}
+    for label, want in (("露天", True), ("巨蛋", False)):
+        grp = [r for r in played if r["open_air"] is want]
+        groups[label] = grp
+        if not grp:
+            continue
+        e = [r["actual"] - r["pred"] for r in grp]
+        mean = sum(e) / len(e)
+        sd = (sum((x - mean) ** 2 for x in e) / len(e)) ** 0.5
+        print(f"| {label} | {len(grp)} | {mean:+.2f} | "
+              f"{sum(abs(x) for x in e) / len(e):.2f} | {sd / len(e) ** 0.5:.2f} |")
+
+    o, d = groups.get("露天", []), groups.get("巨蛋", [])
+    if len(o) > 1 and len(d) > 1:
+        eo = [r["actual"] - r["pred"] for r in o]
+        ed = [r["actual"] - r["pred"] for r in d]
+        mo, md = sum(eo) / len(eo), sum(ed) / len(ed)
+        vo = sum((x - mo) ** 2 for x in eo) / (len(eo) - 1)
+        vd = sum((x - md) ** 2 for x in ed) / (len(ed) - 1)
+        se = (vo / len(eo) + vd / len(ed)) ** 0.5
+        n_se = abs(mo - md) / se if se else 0.0
+        print(f"\n- 露天 − 巨蛋 的平均誤差差距 **{mo - md:+.2f} 分**，"
+              f"標準誤 {se:.2f} → **{n_se:.1f} 個標準誤**。")
+        print("- " + ("**尚無證據**顯示露天的模型誤差比較大。露天場出現大失誤時，"
+                     "預設解釋是單場變異（總分標準差 4.03），不是球場類型。"
+                     if n_se < 2 else
+                     "**已超過 2 個標準誤**，露天的模型誤差確實較大，"
+                     "應重新檢討 +7% 門檻的高度。"))
 
     # ---------- 解讀 ----------
     n = len(diffs)
