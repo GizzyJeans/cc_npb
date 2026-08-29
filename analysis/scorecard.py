@@ -87,6 +87,62 @@ def main() -> None:
               f"| {r['actual']} | {r['pred'] - r['line']:+.2f} "
               f"| {r['actual'] - r['pred']:+.2f} |")
 
+    # ---------- 水位偏誤 vs 選擇偏誤 ----------
+    # 「模型整體低估得分」和「模型與市場分歧的那些場次剛好是模型錯的」
+    # 是兩件事，補救方式完全不同: 前者調 league_rpg，後者調 league_rpg
+    # 完全無效。用「已下注 vs 未下注」切開 —— 未下注的場次是對照組，
+    # 它們的偏誤才是乾淨的水位訊號。
+    print("\n## 水位偏誤 vs 選擇偏誤\n")
+    print("| 分組 | 場數 | 實際−模型 | 標準誤 | 實際−盤口 |")
+    print("|---|---|---|---|---|")
+    split = {}
+    for label, want in (("已下注", True), ("未下注", False)):
+        grp = [r for r in played if (r["stake"] > 0) is want]
+        split[label] = grp
+        if not grp:
+            continue
+        e = [r["actual"] - r["pred"] for r in grp]
+        el = [r["actual"] - r["line"] for r in grp]
+        mean = sum(e) / len(e)
+        sd = (sum((x - mean) ** 2 for x in e) / len(e)) ** 0.5
+        print(f"| {label} | {len(grp)} | {mean:+.2f} | {sd / len(e) ** 0.5:.2f} "
+              f"| {sum(el) / len(el):+.2f} |")
+
+    on, off = split.get("已下注", []), split.get("未下注", [])
+    if len(on) > 1 and len(off) > 1:
+        eon = [r["actual"] - r["pred"] for r in on]
+        eoff = [r["actual"] - r["pred"] for r in off]
+        mon, moff = sum(eon) / len(eon), sum(eoff) / len(eoff)
+        von = sum((x - mon) ** 2 for x in eon) / (len(eon) - 1)
+        voff = sum((x - moff) ** 2 for x in eoff) / (len(eoff) - 1)
+        se = (von / len(eon) + voff / len(eoff)) ** 0.5
+        n_se = abs(mon - moff) / se if se else 0.0
+        print(f"\n- 已下注 − 未下注 的偏誤差距 **{mon - moff:+.2f} 分**，"
+              f"標準誤 {se:.2f} → **{n_se:.1f} 個標準誤**。")
+        off_line = sum(r["actual"] - r["line"] for r in off) / len(off)
+        print(f"- **未下注場次是乾淨的對照組**：它們的「實際 − 盤口」"
+              f"平均 {off_line:+.2f} 分。")
+        if abs(off_line) < 0.3:
+            print("  - 接近零，代表 **聯盟得分水位沒有問題**；"
+                  "調 `league_rpg` 救不了已下注場次的偏誤。")
+        if n_se >= 2:
+            print("- 已達 2 個標準誤：**這是選擇問題**。該查的是"
+                  "「模型在哪些情境下最容易與市場分歧且分歧方向是錯的」，"
+                  "不是得分水位。")
+        else:
+            print("- 尚未達 2 個標準誤，還不能斷定是選擇問題，但方向值得追蹤。")
+
+    print("\n| 模型方向 | 場數 | 實際−模型 | 實際−盤口 |")
+    print("|---|---|---|---|")
+    for side, label in (("under", "押小分"), ("over", "押大分")):
+        grp = [r for r in played if r["side"] == side]
+        if not grp:
+            continue
+        e = [r["actual"] - r["pred"] for r in grp]
+        el = [r["actual"] - r["line"] for r in grp]
+        print(f"| {label} | {len(grp)} | {sum(e) / len(e):+.2f} "
+              f"| {sum(el) / len(el):+.2f} |")
+
     # ---------- 露天 vs 巨蛋 ----------
     # +7% 的露天 EV 門檻是用來補償「拿不到當日天氣」的。這個門檻的高度
     # 只有在露天的誤差真的比較大時才站得住，所以要持續追蹤，不能只在
