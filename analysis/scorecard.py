@@ -58,6 +58,31 @@ def main() -> None:
         print(f"\n總下注 {total_stake:,.0f} 單位，損益 {total_pl:+,.0f}"
               f"（ROI {total_pl / total_stake:+.1%}、本金 {total_pl / 100000:+.2%}）")
 
+    # ---------- 這個 ROI 有沒有意義 ----------
+    # 累計損益是最容易被過度解讀的數字: 它每天都在動，而且動得比它的
+    # 標準誤小得多。所以 **每天都印出它距離 0 幾個標準誤**，
+    # 而不是等到數字難看的那天才想起來算。
+    rets = [payout(r["ratio"], r["stake"], r["hk"]) / r["stake"]
+            for r in rows if r["stake"] > 0 and r["ratio"] is not None]
+    if len(rets) > 1:
+        n = len(rets)
+        m = sum(rets) / n
+        sd = (sum((x - m) ** 2 for x in rets) / (n - 1)) ** 0.5
+        se = sd / n ** 0.5
+        print(f"\n### 這個 ROI 有沒有意義\n")
+        print(f"- 下注 **{n} 次**，單注報酬標準差 {sd:.3f}，"
+              f"平均值的標準誤 **{se:.1%}**。")
+        print(f"- ROI {m:+.1%} 距離 0 只有 **{abs(m) / se:.2f} 個標準誤** —— "
+              + ("**無法與「沒有優勢」區分**。"
+                 if abs(m) / se < 2 else "已可與 0 區分。"))
+        if m > 0:
+            need = int(round((sd * 2 / m) ** 2, -1))
+            print(f"- 若真實 ROI 就是 {m:+.1%}，要在 2 個標準誤下確認需要"
+                  f"約 **{need:,} 注**（目前 {n} 注）。")
+        print("- **累計損益不是模型有效的證據，不論它是正的還是負的。** "
+              "會動的是它、不會動的是 0.1 個標準誤的解析度。"
+              "真正該看的是本檔後面那幾節的偏誤診斷。")
+
     # ---------- 方向偏誤 ----------
     played = [r for r in rows if r["actual"] is not None]
     unders = sum(1 for r in played if r["side"] == "under")
