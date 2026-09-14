@@ -8,14 +8,35 @@
 成本 —— 每擋下一個 +9% EV 的部位，就是放棄一次期望為正的機會。
 **除非被擋下的那些部位實際上是賠錢的。**
 
-這支腳本把每一個已結算的部位重新過一次當天的定價與門檻，分成三類:
+這支腳本把每一個已結算的部位重新過一次當天的定價與門檻，分成四類:
 
-    A. 數值面通過 + 門檻通過   -> 本來就該下（實際是否下到還要看單日額度）
-    B. 數值面通過 + 門檻擋下   -> **門檻真正介入的那些**
-    C. 數值面不通過           -> 不管有沒有門檻都不會下
+    A. 數值面通過 + 門檻通過       -> 本來就該下（是否下到還要看單日額度）
+    B. 數值面通過 + 資料門檻擋下   -> **門檻真正介入的那些**
+    X. 數值面通過 + 已開賽         -> 那一注 **根本下不出去**
+    C. 數值面不通過               -> 不管有沒有門檻都不會下
 
 只有 B 類能回答這個問題。A 類裡沒下到的是額度的決定、不是門檻的決定，
-C 類則與門檻無關 —— 把這三類混在一起看會得到毫無意義的數字。
+C 類則與門檻無關 —— 把這幾類混在一起看會得到毫無意義的數字。
+
+⚠️ 為什麼 X 類要單獨拉出來 (2026-09-14 才修正)
+---------------------------------------------
+原本 X 併在 B 裡面，那是 **範疇錯誤**:
+
+* **資料門檻是一個預測性主張** —— 「這類比賽比較難預測，所以該放掉」。
+  這個主張可以、也應該用損益檢驗。
+* **`prices_verified` 是可執行性條件** —— 看板拿到手時比賽已經開打，
+  賽前盤口不存在了。那一注 **下不出去**。問它「賺還是賠」是假問題:
+  算出 +930 不代表門檻讓我們少賺 930，因為那 930 從來不在桌上。
+
+把兩者混在一起會同時污染兩個方向的結論。實際影響不小 ——
+2026-09-14 拆開後:
+
+    併在一起   B 28 場  ROI  -6.8%
+    拆開之後   B 25 場  ROI **-18.8%**   X 3 場 (3/3 全中，但下不出去)
+
+三注「已開賽」全部會贏，把資料門檻的績效稀釋了 12 個百分點。
+**X 類唯一該讀出來的是「看板拿到得太晚」**，解法是早點拿到盤口，
+不是放寬門檻。目前三次都出在週末或提前開賽的日子。
 
 ⚠️ 為什麼不直接用 ledger 的狀態字串分類
 --------------------------------------
@@ -81,6 +102,8 @@ def classify() -> list[dict]:
                 "date": date, "game": game.matchup, "ev": best.ev,
                 "side": label, "numeric_ok": numeric_ok,
                 "blocked_by_data": blocked_by_data,
+                # 這一注根本不存在 (賽前盤口已不可得)，不是「預測不準」
+                "unplaceable": not readiness.prices_verified,
                 "gaps": readiness.soft_gaps(), "blocking": readiness.blocking_reasons(),
                 "stake": stake, "status": status,
                 "pl": payout(ratio, UNIT, hk), "actual": sum(final),
@@ -101,7 +124,16 @@ def summarise(label: str, grp: list[dict]) -> None:
 def main() -> None:
     rows = classify()
     A = [r for r in rows if r["numeric_ok"] and not r["blocked_by_data"]]
-    B = [r for r in rows if r["numeric_ok"] and r["blocked_by_data"]]
+    # ⚠️ 「已開賽」與「資料不足」是兩種完全不同的東西，不可以混在一起算。
+    # 資料門檻是一個 **預測性** 判斷: 主張這類比賽比較難預測，所以該放掉。
+    # 那個主張可以用損益檢驗，也應該被檢驗。
+    # 但 prices_verified 是 **可執行性** 條件: 賽前盤口已經不存在了，
+    # 那一注根本下不出去。它「賺」或「賠」多少是假問題 ——
+    # 算出 +930 不代表門檻讓我們少賺 930，因為那 930 從來不在桌上。
+    X = [r for r in rows if r["numeric_ok"] and r["blocked_by_data"]
+         and r["unplaceable"]]
+    B = [r for r in rows if r["numeric_ok"] and r["blocked_by_data"]
+         and not r["unplaceable"]]
     C = [r for r in rows if not r["numeric_ok"]]
 
     print("# 資料門檻的實際績效\n")
@@ -110,10 +142,20 @@ def main() -> None:
     print("| 分類 | 場數 | 平均 EV | 贏 | 假設損益 | ROI |")
     print("|---|---|---|---|---|---|")
     summarise("A 數值面通過＋門檻通過", A)
-    summarise("**B 數值面通過＋門檻擋下**", B)
+    summarise("**B 數值面通過＋資料門檻擋下**", B)
+    summarise("X 數值面通過＋**已開賽（下不出去）**", X)
     summarise("C 數值面不通過", C)
+    if X:
+        pl_x = sum(r["pl"] for r in X)
+        print(f"\n> **X 類不是損益問題。** 這 {len(X)} 注在定價時賽前盤口"
+              f"已經不存在（`prices_verified` 是硬性門檻），"
+              f"那一注 **根本下不出去**。表上的 {pl_x:+,.0f} 是"
+              f"「假如當時能下」的數字，而當時不能下 —— "
+              "它既不是門檻的功勞也不是門檻的代價。\n"
+              "> 真正該從 X 類讀出來的只有一件事：**我拿到看板的時間太晚了**。"
+              "解法是早點拿到盤口，不是放寬門檻。")
 
-    print("\n## B 類 —— 門檻真正介入的部位\n")
+    print("\n## B 類 —— 資料門檻真正介入的部位\n")
     if not B:
         print("（無）")
     else:
