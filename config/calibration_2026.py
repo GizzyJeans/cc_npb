@@ -31,9 +31,49 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 AS_OF = "2026-09-15 00:20 UTC (09:20 JST)"
 SAMPLE_GAMES = 771
 SAMPLE_RANGE = "2026-03-27 ~ 2026-09-14"
+
+
+def sample_through() -> str:
+    """校準樣本涵蓋到哪一天 (``YYYY-MM-DD``)。"""
+    return SAMPLE_RANGE.split("~")[-1].strip()
+
+
+def staleness_days(slate_date: str) -> int:
+    """定價日 `slate_date` 時，校準落後幾天。
+
+    正常情況校準要涵蓋到 **前一天** 收盤，所以 0 代表最新、正值代表過期。
+    """
+    from datetime import date
+
+    want = date.fromisoformat(slate_date) - timedelta(days=1)
+    return (want - date.fromisoformat(sample_through())).days
+
+
+def freshness_note(slate_date: str) -> str | None:
+    """過期時回傳該印在報告最上面的警告；最新則回傳 None。
+
+    為什麼要有這個函式
+    ------------------
+    每日校準本來只靠「排程指令叫我記得跑」來保證。2026-09-13 容器回收
+    把重配適管線弄丟之後，9/13 與 9/14 兩天就這樣沿用了 9/11 的係數 ——
+    沒有任何東西擋下來，因為那只是一句提醒。這和同一週 pytest 被管線
+    吞掉結束狀態是同一類錯誤: **靠記性的保證等於沒有保證。**
+
+    所以改成在 **使用的當下** 檢查: 定價時只要校準不是涵蓋到前一天，
+    報告就會自己把落後天數印在最上面，不需要我記得提。
+    """
+    lag = staleness_days(slate_date)
+    if lag <= 0:
+        return None
+    return (f"⚠️ **校準已過期 {lag} 天** —— 樣本只涵蓋到 {sample_through()}，"
+            f"定價日是 {slate_date}（應涵蓋到前一天）。"
+            f"請先跑 `python3 scripts/refresh_calibration.py`。"
+            f"球隊／球場／牛棚係數都是舊的，先發成績可能是新的。")
 
 # ---------------------------------------------------------------------------
 # 聯盟層級
@@ -248,5 +288,6 @@ __all__ = [
     "EXTRAS_RESOLVE_RATE", "OBSERVED", "PARK_FACTORS_2026", "TEAM_OFFENCE",
     "TEAM_DEFENCE_SEASON", "BULLPEN_FACTOR", "SHRINK_IP", "blended_defence",
     "F5_SHARE", "F5_OBSERVED", "OPENER_F5_EFFECT",
+    "sample_through", "staleness_days", "freshness_note",
     "LEAGUE_RPG_RECENT_45D", "LEAGUE_RPG_RECENT_30D",
 ]
