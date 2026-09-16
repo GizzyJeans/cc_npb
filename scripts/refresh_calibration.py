@@ -58,6 +58,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
 import urllib.request
@@ -287,6 +288,19 @@ def write_config(text: str, var: str, body: str) -> str:
     return text[:m.start("b")] + body + "\n" + text[m.start("t"):]
 
 
+def _emit(lines: list[str]) -> None:
+    """把累積的輸出一次印出; 管線被提早關掉時安靜收工。
+
+    到這裡副作用 (寫檔) 已經完成，所以 BrokenPipeError 只是「沒人在讀」，
+    不是失敗。
+    """
+    try:
+        print("\n".join(lines))
+        sys.stdout.flush()
+    except BrokenPipeError:
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="只印出，不寫檔")
@@ -296,31 +310,47 @@ def main() -> None:
     ap.add_argument("--through", default="", help="只用此日期(含)以前的比賽，供回歸驗證")
     args = ap.parse_args()
 
+    # ⚠️ 全部先算完、**先寫檔**，最後才印。
+    #
+    # 2026-09-16 的自動結算是這樣跑的:
+    #
+    #     python3 scripts/refresh_calibration.py --as-of "..." | head -4 && ...
+    #
+    # `head` 讀滿 4 行就關掉管線，python 收到 SIGPIPE 在寫檔 **之前** 就死了，
+    # 而 `head` 自己回 0，所以 `&&` 一路往下跑、回報還寫著「校準已更新」。
+    # 那天的定價與結算其實用的是前一天的係數。
+    # 這和同一週 pytest 被 `| tail` 吞掉結束狀態是同一個坑。
+    #
+    # 防法不是「記得不要接管線」——是把有副作用的那一步排在輸出前面，
+    # 這樣就算輸出被截斷，該做的事也已經做完了。
+    lines: list[str] = []
+
     games = parse_games(refresh=not args.no_refresh)
     if args.through:
         games = [g for g in games if g["date"] <= args.through]
-    print(f"已打完的例行賽: {len(games)} 場")
+    lines.append(f"已打完的例行賽: {len(games)} 場")
     res = fit(games)
-    print(f"配適檢核: 預測總得分 {res['pred']:.0f} vs 實際 {res['actual']} "
-          f"({res['pred'] / res['actual']:.4f})")
-    print(f"聯盟每隊每場 {res['lg']:.4f}　主場乘數 {res['home_edge']:.4f}")
+    lines.append(f"配適檢核: 預測總得分 {res['pred']:.0f} vs 實際 {res['actual']} "
+                 f"({res['pred'] / res['actual']:.4f})")
+    lines.append(f"聯盟每隊每場 {res['lg']:.4f}　主場乘數 {res['home_edge']:.4f}")
 
     pf_shrunk, counts = shrink_parks(games, res["pf"])
-    print(f"\n主要球場 ({PRIMARY_MIN_GAMES} 場以上) {len(pf_shrunk)} 座:")
+    lines.append(f"\n主要球場 ({PRIMARY_MIN_GAMES} 場以上) {len(pf_shrunk)} 座:")
     for p, v in sorted(pf_shrunk.items(), key=lambda x: -x[1]):
-        print(f"  {p:<16} {counts[p]:>3} 場  {res['pf'][p]:.3f} -> {v:.4f}")
+        lines.append(f"  {p:<16} {counts[p]:>3} 場  {res['pf'][p]:.3f} -> {v:.4f}")
     minor = {p: c for p, c in counts.items() if c < PRIMARY_MIN_GAMES}
     if minor:
-        print(f"\n場次不足、係數不可用 (下游退回中性值 1.0): "
-              + "、".join(f"{p} {c} 場" for p, c in sorted(minor.items())))
+        lines.append("\n場次不足、係數不可用 (下游退回中性值 1.0): "
+                     + "、".join(f"{p} {c} 場" for p, c in sorted(minor.items())))
 
     pen = bullpen(games, pf_shrunk, res["lg"], refresh=not args.no_refresh)
-    print("\n牛棚係數:")
+    lines.append("\n牛棚係數:")
     for t, v in sorted(pen.items(), key=lambda x: x[1]):
-        print(f"  {t:<10} {v:.4f}")
+        lines.append(f"  {t:<10} {v:.4f}")
 
     if args.dry_run:
-        print("\n--dry-run，未寫檔")
+        lines.append("\n--dry-run，未寫檔")
+        _emit(lines)
         return
 
     text = CONFIG.read_text()
@@ -342,7 +372,8 @@ def main() -> None:
     if args.as_of:
         text = re.sub(r'^AS_OF = ".*"$', f'AS_OF = "{args.as_of}"', text, flags=re.M)
     CONFIG.write_text(text)
-    print(f"\n已寫回 {CONFIG.relative_to(ROOT)}")
+    lines.append(f"\n已寫回 {CONFIG.relative_to(ROOT)}")
+    _emit(lines)
 
 
 if __name__ == "__main__":
