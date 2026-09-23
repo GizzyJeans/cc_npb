@@ -70,7 +70,11 @@ class BetEvaluation:
     """市場去水後機率。"""
 
     fair_hk: float
-    """模型公平香港盤賠率。"""
+    """模型公平香港盤賠率 = EV 歸零的賠率。
+
+    在部分結算的盤口上 **不等於** ``(1 - model_prob) / model_prob``:
+    `model_prob` 把「贏 20% 賠金、其餘 80% 退回」裡退回的那 80% 也當成輸。
+    """
 
     offered_hk: float
     ev: float
@@ -124,7 +128,13 @@ def evaluate(
     model_prob = win / live if live > 1e-12 else 0.0
 
     ev = _ev(outcome_probs, offered_hk)
-    fair_hk = (1.0 - model_prob) / model_prob if model_prob > 1e-9 else float("inf")
+    # EV(hk) = W * hk - L，歸零點 hk* = L / W。
+    # ⚠️ 2026-09-23 前這裡是 (1 - model_prob) / model_prob —— 它把部分結算
+    # 裡 **退回的那一截本金** 也算成輸，在 N±XX 盤上一律偏高 (保守)。
+    # 9/23 的「大分 7+20」顯示 1.025，真正的歸零點約 0.80。
+    # 純二元與 N平 盤兩式相同，所以只影響部分結算的盤口; EV 與分級不受影響。
+    loss = sum(p * -float(r) for r, p in outcome_probs.items() if r < 0)
+    fair_hk = loss / win if win > 1e-12 else float("inf")
     min_hk = fair_hk
 
     kelly = _kelly(outcome_probs, offered_hk)

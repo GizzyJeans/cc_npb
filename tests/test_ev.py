@@ -62,6 +62,29 @@ class TestEvaluate:
         )
         assert breakeven.ev == pytest.approx(0.0, abs=1e-9)
 
+    @pytest.mark.parametrize("probs", [
+        # 9/23 西武 @ 軟銀「大分 7+20」: 落在 7 分時贏 20% 賠金、其餘退回
+        {Fraction(1): 0.466, Fraction(1, 5): 0.139, Fraction(-1): 0.395},
+        # 9/23 阪神 @ 養樂多「小分 7-70」: 落在 7 分時贏 70% 賠金
+        {Fraction(1): 0.456, Fraction(7, 10): 0.140, Fraction(-1): 0.404},
+        # N-25: 落在關鍵分只輸 25% 本金
+        {Fraction(1): 0.53, Fraction(-1, 4): 0.12, Fraction(-1): 0.35},
+    ])
+    def test_min_odds_zero_ev_on_partial_settlement(self, probs):
+        """最低接受賠率的定義就是 EV 歸零點 —— 部分結算的盤口也一樣。
+
+        2026-09-23 之前這裡用 (1 - 過盤率) / 過盤率，把退回的本金算成輸。
+        「大分 7+20」因此顯示 1.025，但看板 0.930 的 EV 是 +6.5%。
+        """
+        ev = evaluate(probs, offered_hk=0.93, bankroll=100_000, market_prob=0.50)
+        breakeven = evaluate(
+            probs, offered_hk=ev.min_hk, bankroll=100_000, market_prob=0.50
+        )
+        assert breakeven.ev == pytest.approx(0.0, abs=1e-12)
+        assert ev.fair_hk == ev.min_hk
+        # 舊公式永遠不低於真正的歸零點 (保守)，且在部分結算時嚴格較高
+        assert (1 - ev.model_prob) / ev.model_prob > ev.min_hk
+
     def test_positive_ev_when_model_beats_price(self):
         probs = {Fraction(1): 0.55, Fraction(-1): 0.45}
         ev = evaluate(probs, 0.95, 100_000, 0.50)
