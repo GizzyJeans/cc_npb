@@ -2086,5 +2086,27 @@
 "pen_count": 4,
 "total_pitchers": 5
 }
+},
+"2026-09-24": {
+"巨人": {
+"pen_pitches": 41,
+"pen_count": 3,
+"total_pitchers": 4
+},
+"広島": {
+"pen_pitches": 46,
+"pen_count": 3,
+"total_pitchers": 4
+},
+"楽天": {
+"pen_pitches": 0,
+"pen_count": 0,
+"total_pitchers": 1
+},
+"日本ハム": {
+"pen_pitches": 55,
+"pen_count": 3,
+"total_pitchers": 4
+}
 }
 }
