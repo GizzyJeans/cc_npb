@@ -2160,5 +2160,57 @@
 "pen_count": 2,
 "total_pitchers": 3
 }
+},
+"2026-09-26": {
+"日本ハム": {
+"pen_pitches": 14,
+"pen_count": 1,
+"total_pitchers": 2
+},
+"オリックス": {
+"pen_pitches": 13,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"阪神": {
+"pen_pitches": 68,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"DeNA": {
+"pen_pitches": 78,
+"pen_count": 5,
+"total_pitchers": 6
+},
+"楽天": {
+"pen_pitches": 32,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"ソフトバンク": {
+"pen_pitches": 31,
+"pen_count": 3,
+"total_pitchers": 4
+},
+"ロッテ": {
+"pen_pitches": 28,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"西武": {
+"pen_pitches": 65,
+"pen_count": 3,
+"total_pitchers": 4
+},
+"中日": {
+"pen_pitches": 94,
+"pen_count": 5,
+"total_pitchers": 6
+},
+"ヤクルト": {
+"pen_pitches": 62,
+"pen_count": 4,
+"total_pitchers": 5
+}
 }
 }
