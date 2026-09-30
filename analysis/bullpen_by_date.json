@@ -2296,5 +2296,37 @@
 "pen_count": 3,
 "total_pitchers": 4
 }
+},
+"2026-09-29": {
+"ロッテ": {
+"pen_pitches": 60,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"楽天": {
+"pen_pitches": 51,
+"pen_count": 1,
+"total_pitchers": 2
+},
+"広島": {
+"pen_pitches": 30,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"巨人": {
+"pen_pitches": 10,
+"pen_count": 1,
+"total_pitchers": 2
+},
+"オリックス": {
+"pen_pitches": 24,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"西武": {
+"pen_pitches": 27,
+"pen_count": 2,
+"total_pitchers": 3
+}
 }
 }

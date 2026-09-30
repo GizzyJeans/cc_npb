@@ -144,6 +144,8 @@ def main() -> None:
         n_se = abs(mon - moff) / se if se else 0.0
         print(f"\n- 已下注 − 未下注 的偏誤差距 **{mon - moff:+.2f} 分**，"
               f"標準誤 {se:.2f} → **{n_se:.1f} 個標準誤**。")
+        print("- 2026-09-30 到門檻時提出的第六個候選機制（分歧是模型的誤差、"
+              "該往盤口收縮）見 `analysis/market-shrinkage.md`。")
         off_line = sum(r["actual"] - r["line"] for r in off) / len(off)
         print(f"- **未下注場次是乾淨的對照組**：它們的「實際 − 盤口」"
               f"平均 {off_line:+.2f} 分。")
