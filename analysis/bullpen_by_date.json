@@ -2328,5 +2328,27 @@
 "pen_count": 2,
 "total_pitchers": 3
 }
+},
+"2026-09-30": {
+"ロッテ": {
+"pen_pitches": 11,
+"pen_count": 1,
+"total_pitchers": 2
+},
+"楽天": {
+"pen_pitches": 21,
+"pen_count": 1,
+"total_pitchers": 2
+},
+"ヤクルト": {
+"pen_pitches": 33,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"阪神": {
+"pen_pitches": 13,
+"pen_count": 1,
+"total_pitchers": 2
+}
 }
 }
