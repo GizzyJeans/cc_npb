@@ -68,7 +68,9 @@ ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config" / "calibration_2026.py"
 CACHE = Path("/tmp/npb_cal_cache")
 
-MONTHS = ("03", "04", "05", "06", "07", "08", "09")
+MONTHS = ("03", "04", "05", "06", "07", "08", "09", "10")
+"""⚠️ 2026-10-02 才補上 "10"。之前只到 "09"，10/1 那天的校準因此停在 9/30
+而且沒有任何錯誤訊息 —— 見 main() 結尾的落後檢查。"""
 TEAMS = ("ソフトバンク", "日本ハム", "オリックス", "ロッテ", "西武", "楽天",
          "阪神", "DeNA", "巨人", "中日", "広島", "ヤクルト")
 CODES = {"g": "巨人", "t": "阪神", "db": "DeNA", "s": "ヤクルト", "d": "中日",
@@ -347,6 +349,18 @@ def main() -> None:
     lines.append("\n牛棚係數:")
     for t, v in sorted(pen.items(), key=lambda x: x[1]):
         lines.append(f"  {t:<10} {v:.4f}")
+
+    dates = sorted(g["date"] for g in games if g["date"])
+    # 最新一場比賽若落後 as-of 太多，大聲說出來 —— 9/30 → 10/1 那次就是
+    # 月份清單少了 "10"，腳本照常寫檔、回 0，只是資料停在上個月底。
+    as_of_day = re.match(r"\d{4}-\d{2}-\d{2}", args.as_of or "")
+    if dates and as_of_day:
+        import datetime as _dt
+        lag = (_dt.date.fromisoformat(as_of_day.group(0))
+               - _dt.date.fromisoformat(dates[-1])).days
+        if lag > 2:
+            lines.append(f"⚠️ 最新一場比賽是 {dates[-1]}，比 as-of 落後 {lag} 天 —— "
+                         "若那幾天有比賽，賽程頁可能沒抓到（檢查 MONTHS）。")
 
     if args.dry_run:
         lines.append("\n--dry-run，未寫檔")
