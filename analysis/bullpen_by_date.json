@@ -2392,5 +2392,27 @@
 "pen_count": 6,
 "total_pitchers": 7
 }
+},
+"2026-10-02": {
+"ソフトバンク": {
+"pen_pitches": 26,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"ロッテ": {
+"pen_pitches": 45,
+"pen_count": 3,
+"total_pitchers": 4
+},
+"巨人": {
+"pen_pitches": 80,
+"pen_count": 6,
+"total_pitchers": 7
+},
+"ヤクルト": {
+"pen_pitches": 35,
+"pen_count": 2,
+"total_pitchers": 3
+}
 }
 }
