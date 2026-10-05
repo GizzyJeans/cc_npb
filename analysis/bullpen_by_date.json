@@ -2466,5 +2466,37 @@
 "pen_count": 4,
 "total_pitchers": 5
 }
+},
+"2026-10-04": {
+"阪神": {
+"pen_pitches": 97,
+"pen_count": 6,
+"total_pitchers": 7
+},
+"DeNA": {
+"pen_pitches": 75,
+"pen_count": 5,
+"total_pitchers": 6
+},
+"楽天": {
+"pen_pitches": 29,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"ロッテ": {
+"pen_pitches": 42,
+"pen_count": 2,
+"total_pitchers": 3
+},
+"広島": {
+"pen_pitches": 65,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"ヤクルト": {
+"pen_pitches": 121,
+"pen_count": 6,
+"total_pitchers": 7
+}
 }
 }
