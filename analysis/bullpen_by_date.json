@@ -2498,5 +2498,27 @@
 "pen_count": 6,
 "total_pitchers": 7
 }
+},
+"2026-10-05": {
+"ソフトバンク": {
+"pen_pitches": 79,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"楽天": {
+"pen_pitches": 59,
+"pen_count": 3,
+"total_pitchers": 4
+},
+"西武": {
+"pen_pitches": 62,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"ロッテ": {
+"pen_pitches": 60,
+"pen_count": 3,
+"total_pitchers": 4
+}
 }
 }
