@@ -2520,5 +2520,27 @@
 "pen_count": 3,
 "total_pitchers": 4
 }
+},
+"2026-10-06": {
+"西武": {
+"pen_pitches": 83,
+"pen_count": 5,
+"total_pitchers": 6
+},
+"ロッテ": {
+"pen_pitches": 65,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"広島": {
+"pen_pitches": 113,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"阪神": {
+"pen_pitches": 37,
+"pen_count": 4,
+"total_pitchers": 5
+}
 }
 }

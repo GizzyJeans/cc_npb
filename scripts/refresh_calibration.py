@@ -95,6 +95,28 @@ SHRINK_IP = 60.0
 RELIEF_IP_PER_GAME = 3.0
 """單場平均局數低於此值視為救援投手。"""
 
+REGULAR_SEASON_GAMES = 143
+"""每隊例行賽場數（含和局）。
+
+⚠️ 2026-10-07 加上。賽程頁「セ・パ公式戦 日程詳細」在例行賽打完之後，
+還會列出 クライマックスシリーズ（2026: 10/10 起 巨人-DeNA、西武-日本ハム 各三天），
+**沒有任何標記**，而且兩隊都在 TEAMS 裡 —— 不擋的話，季後賽會被當成例行賽
+吃進校準。以「每隊打滿 143 場就停」來截，不必寫死結束日期。"""
+
+
+def cap_regular_season(games: list[dict],
+                       n: int = REGULAR_SEASON_GAMES) -> list[dict]:
+    """依日期順序，任一隊已滿 n 場之後的比賽一律排除。"""
+    played: dict[str, int] = {}
+    out = []
+    for g in sorted(games, key=lambda g: g["date"]):
+        if played.get(g["home"], 0) >= n or played.get(g["away"], 0) >= n:
+            continue
+        played[g["home"]] = played.get(g["home"], 0) + 1
+        played[g["away"]] = played.get(g["away"], 0) + 1
+        out.append(g)
+    return out
+
 
 def fetch(url: str, name: str, refresh: bool) -> str:
     CACHE.mkdir(exist_ok=True)
@@ -145,7 +167,7 @@ def parse_games(refresh: bool) -> list[dict]:
             park = next((v for k, v in PARK_ALIASES.items() if k in venue), venue)
             out.append({"date": date, "home": home, "away": away,
                         "hs": hs, "as": as_, "park": park})
-    return out
+    return cap_regular_season(out)
 
 
 def fit(games: list[dict], rounds: int = 400) -> dict:
