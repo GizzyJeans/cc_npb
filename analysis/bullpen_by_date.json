@@ -2542,5 +2542,17 @@
 "pen_count": 4,
 "total_pitchers": 5
 }
+},
+"2026-10-07": {
+"広島": {
+"pen_pitches": 72,
+"pen_count": 4,
+"total_pitchers": 5
+},
+"阪神": {
+"pen_pitches": 135,
+"pen_count": 7,
+"total_pitchers": 8
+}
 }
 }
