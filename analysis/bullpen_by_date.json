@@ -2554,5 +2554,17 @@
 "pen_count": 7,
 "total_pitchers": 8
 }
+},
+"2026-10-08": {
+"ヤクルト": {
+"pen_pitches": 55,
+"pen_count": 3,
+"total_pitchers": 4
+},
+"阪神": {
+"pen_pitches": 62,
+"pen_count": 4,
+"total_pitchers": 5
+}
 }
 }
