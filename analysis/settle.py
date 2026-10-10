@@ -679,13 +679,21 @@ LEDGER: dict[str, dict] = {
 }
 
 
+POSTSEASON: dict[str, dict] = {}
+"""季後賽（クライマックスシリーズ／日本シリーズ）的帳本，格式同 LEDGER。
+
+**刻意與 LEDGER 分開。** scorecard 與各驗證腳本（validate_gates、
+validate_market_shrinkage …）只讀 LEDGER —— 季後賽是不同的樣本
+（場次極少、對戰集中、王牌先發與全力牛棚），混進去會污染例行賽的結論。
+`run()` 兩邊都查，所以 ``python3 -m analysis.settle <日期>`` 照常可用。"""
+
 def payout(ratio: Fraction, stake: float, hk: float) -> float:
     r = float(ratio)
     return stake * (r * hk if r > 0 else r)
 
 
 def run(date: str) -> None:
-    spec = LEDGER[date]
+    spec = LEDGER[date] if date in LEDGER else POSTSEASON[date]
     slate = importlib.import_module(spec["module"])
     finals, positions = spec["finals"], spec["positions"]
 
