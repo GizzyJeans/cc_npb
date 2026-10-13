@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 
 if ! python3 -c 'import pytest' 2>/dev/null; then
     echo "pytest 未安裝 —— 自動安裝中（全新容器常見）"
-    pip install --quiet pytest
+    python3 -m pip install --quiet pytest   # 不能用裸 pip: 它可能屬於另一個 python（2026-10-13 全新容器就是這樣）
 fi
 
 python3 -m pytest -q
